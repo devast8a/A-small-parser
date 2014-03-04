@@ -1,0 +1,48 @@
+--[[
+    Something I decided to shit out today
+    A lexerless, dynamic, LALR(*)-ish parser and compiler.
+]]--
+
+print "Hello World"
+print var = "Assignment is an expression"
+print "See: ", var
+
+v = 10 + 20
+print "10 + 20 = ", 10 + 20, v
+v = 'A' .. 'B'
+print "'A' .. 'B' = ", 'A' .. 'B', v
+
+f = (a) -> {
+    print "Here's a function"
+    a()
+}
+
+f -> {
+    print "Functions are expressions"
+}
+
+-- Test indexing
+A = {}
+A.B = {}
+A.B.C = {}
+A.B.C.D = {}
+A.B.C.D.E = 'HELLO WORLD'
+print A, A.B, A.B.C, A.B.C.D, A.B.C.D.E
+
+A.B.C.D.E = (tbl)->{
+    print tbl.A .. tbl.B
+}
+
+A.B.C.D.E({
+    A: 'Hello ',
+    B: 'World!'
+})
+
+print 'End'
+
+--[[
+        TODO: Add parser errors
+        TODO: The parser can only lookahead, no backtracking. Should it be added?
+        TODO: Add Repeat/Optional combinators
+        TODO: Keep line info around in the AST
+]]--
