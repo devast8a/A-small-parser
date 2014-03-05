@@ -33,7 +33,16 @@ class BaseParser
 
         if res
             if @builder
-                ast = @\builder ast
+                ast = @\builder ast, stream
+
+                -- TODO: Improve the API or remove the ability for builders to manipulate the parser
+                if ast == 'FAIL'
+                    stream.popRestore!
+                    return false
+
+                ast = ast or {
+                    tag: 'Ignore'
+                }
 
             if @tag
                 ast.tag = @tag
