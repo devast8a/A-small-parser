@@ -22,29 +22,6 @@ inspect = (value, offset='', seen={})->
         else
             return value
 
-shallowcopy = (t)->
-    if type(t) != 'table'
-        return t
-    output = {}
-    for k,v in pairs t
-        output[k] = v
-    return output
-
-deepcopy = (t, seen = {})->
-    if type(t) != 'table'
-        return t
-
-    res = seen[t]
-    if res
-        return res
-
-    res = {}
-    seen[t] = res
-    for k,v in pairs t
-        res[k] = deepcopy(v, seen)
-    setmetatable res, deepcopy getmetatable(t), seen
-    return res
-
 import Any, BaseParser, List, Pattern, Sequence from require "parser.grammar.generator"
 require 'Grammar'
 Stream = require 'parser.Stream'
