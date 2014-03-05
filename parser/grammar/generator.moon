@@ -140,7 +140,8 @@ class Sequence extends BaseParser
 
 
 class Repeat extends BaseParser
-    new: (@item, options = {})=>
+    new: (item, options = {})=>
+        @item = toParser item
         super options
 
         if options.separator
