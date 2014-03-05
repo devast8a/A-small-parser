@@ -246,4 +246,10 @@ return {
     :EOF
     :INDENT
     :DEDENT
+
+    -- Quick token creation function
+    T: (tokenName)->
+        {
+            token: tokenName
+        }
 }
