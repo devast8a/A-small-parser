@@ -234,7 +234,7 @@ class Token extends BaseParser
         super options
 
         if type(matcher)=='string'
-            @matcher = (token)=>
+            @matcher = (token)->
                 token.token == matcher
         else
             @matcher = matcher
@@ -243,7 +243,7 @@ class Token extends BaseParser
         token = stream.peekToken!
 
         if token
-            if @matcher token
+            if @\matcher token
                 return true, stream.popToken!
 
 EOF = Token 'EOF'
