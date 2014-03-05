@@ -17,6 +17,7 @@ class BaseParser
         @builder = options.builder
         @tag = options.tag
         @debug = options.debug
+        @replaceWith = options.replaceWith
 
     isParser: true
 
@@ -36,6 +37,10 @@ class BaseParser
 
             if @tag
                 ast.tag = @tag
+
+            -- Replaces the matched sequence with a token
+            if @replaceWith
+                stream.pushToken @replaceWith
 
             print "< C #{@}" if stream.debug
             stream.popContinue!
