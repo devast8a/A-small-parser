@@ -83,19 +83,13 @@ class Stream
             @farestPos = @pos
             @farestParser = parser
 
+        @parser.before.parse @
         res, node = parser.parse @
 
         if res
             return res, node
 
-        return if @inAny
-
-        @inAny = true
-        res = @parser.any.parse @
-
-        @inAny = false
-
-        if not res
+        if not @parser.after.parse @
             return
 
         return @match parser
