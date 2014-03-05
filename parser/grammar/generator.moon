@@ -294,12 +294,12 @@ return {
     :Any
     :BaseParser
     :BnExp
-    :List
     :LeftRecursive
     :Optional
     :Not
     :Pattern
     :Peek
+    :Repeat
     :Sequence
     :Token
     :Keyword
