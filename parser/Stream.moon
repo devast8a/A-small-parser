@@ -2,6 +2,7 @@ import insert, remove from table
 clone = =>
     [v for v in *@]
 
+-- TODO: This class is one of two abominations that drive this entire thing, it needs urgent attention
 class Stream
     length: 0
     pos: 1
