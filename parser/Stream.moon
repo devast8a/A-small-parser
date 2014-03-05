@@ -2,6 +2,28 @@ import insert, remove from table
 clone = =>
     [v for v in *@]
 
+buildLineMap = (input)->
+    newLines = {'\r\n()', '\r[^\n]()', '[^\r]\n()'}
+    output = {}
+
+    max = 0
+    for newLine in *newLines
+        for pos in input.gmatch newLine
+            output[pos] = true
+            max = pos if pos > max
+
+    line = 2
+    for i=1,max
+        if output[i]
+            output[i] = line
+            line += 1
+    output[1] = 1
+
+    for k,v in pairs output
+        print k, v
+
+    return output
+
 -- TODO: This class is one of two abominations that drive this entire thing, it needs urgent attention
 class Stream
     length: 0
@@ -9,17 +31,27 @@ class Stream
     debug: false
     expecting: nil
     eof: false
+    farestPos: 0
 
     new: (@__source, @parser)=>
         @length = #@__source
         @stack = {}
         @tokenStack = {}
+        @linemap = buildLineMap @__source
 
     advanceTo: (@pos)=>
     advance: (count)=>@pos+=count
 
     isEOF: =>
         @pos >= @length
+
+    getLineInfo: (pos=@pos)=>
+        i = pos
+
+        while not @linemap[i] and i > 0
+            i-=1
+
+        return @linemap[i], pos - i, pos
 
     push: =>
         insert @stack, {
@@ -47,6 +79,10 @@ class Stream
         @popRest state
 
     match: (parser)=>
+        if @pos > @farestPos
+            @farestPos = @pos
+            @farestParser = parser
+
         res, node = parser.parse @
 
         if res
