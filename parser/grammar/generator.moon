@@ -217,17 +217,25 @@ class Not extends BaseParser
         return true, {
             tag: 'Ignore'
         }
+
+class Peek extends BaseParser
+    new: (parser, options)=>
+        super options
         @parser = toParser parser
 
     exec: (stream)=>
+        stream.push!
         res, ast = stream.match @parser
-        if not res
-            stream.advance 1
+        stream.popRestore!
+
+        if res
             return true, {
                 tag: 'Ignore'
             }
+        return nil, {
+            tag: 'Ignore'
+        }
 
-        return nil
 
 class Token extends BaseParser
     new: (matcher, options)=>
@@ -259,6 +267,7 @@ return {
     :Optional
     :Not
     :Pattern
+    :Peek
     :Sequence
     :Token
     :Keyword
