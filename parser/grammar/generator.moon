@@ -123,7 +123,7 @@ class Sequence extends BaseParser
         "#{@@__name} #{@tag}"
 
 
-class List extends BaseParser
+class Repeat extends BaseParser
     new: (@item, options = {})=>
         super options
 
@@ -158,7 +158,7 @@ class List extends BaseParser
                     break
 
     __tostring: =>
-        "List #{@tag}"
+        "#{@@__name} #{@tag}"
 
 replace = {
     '\n': '\\n'
