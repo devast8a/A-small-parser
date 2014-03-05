@@ -201,7 +201,22 @@ class Optional extends BaseParser
 
 --TODO: Not is kind of slow, especially in the common usecase of it
 class Not extends BaseParser
-    new: (parser)=>
+    new: (...)=>
+        @parsers = toParserTable {...}
+
+    exec: (stream)=>
+        for parser in *@parsers
+            stream.push!
+            res, ast = stream.match parser
+            stream.popRestore!
+
+            if res
+                return nil
+
+        stream.advance 1
+        return true, {
+            tag: 'Ignore'
+        }
         @parser = toParser parser
 
     exec: (stream)=>
