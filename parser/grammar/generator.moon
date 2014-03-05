@@ -246,6 +246,7 @@ return {
     :Pattern
     :Sequence
     :Token
+    :Keyword
 
     -- Token matchers
     :EOF
