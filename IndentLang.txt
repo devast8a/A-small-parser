@@ -1,0 +1,106 @@
+--[[
+    Some test code for an example Indentation Language
+
+Entire program output should be:
+100     300
+'A' .. 'B' =    AB
+variable .. 'B' =       AB
+Declare F1
+Call F1: F1
+Hello Arguments!
+If!
+Indexing
+While! 4
+While! 3
+While! 2
+While! 1
+OUTER-A
+OUTER-B
+INNER-A
+INNER-B
+INNER-INNER
+]]
+
+----------------------------------------
+-- Assignment --------------------------
+----------------------------------------
+variable = 'A'
+print hello = 100, things = 300
+
+----------------------------------------
+-- Binary Expression -------------------
+----------------------------------------
+print "'A' .. 'B' = ", 'A'..'B'
+print "variable .. 'B' = ", variable..'B'
+
+----------------------------------------
+-- Bracketed Expression ----------------
+----------------------------------------
+v = 3 * (1 + 2)
+
+-- TODO: Try and fix this
+--v = (1 + 2) * 3
+
+----------------------------------------
+-- Functions ---------------------------
+----------------------------------------
+f1 = ->
+    return 'F1'
+
+print 'Declare F1'
+print 'Call F1: ' .. f1!
+
+f2 = (arg)->
+    return arg .. ' Arguments!'
+
+print f2 'Hello'
+
+----------------------------------------
+-- If ----------------------------------
+----------------------------------------
+if abc = 100
+    print 'If!'
+
+if true
+    print 'True'
+
+if false
+    print 'False'
+
+----------------------------------------
+-- Index -------------------------------
+----------------------------------------
+A = {}
+A.B = {}
+A.B.C = {}
+A.B.C.D = 'Indexing'
+print A.B.C.D
+
+----------------------------------------
+-- Tables ------------------------------
+----------------------------------------
+tbl = {'A', 'B', 'C', thing: Value}
+
+----------------------------------------
+-- While -------------------------------
+----------------------------------------
+value = 5
+test = ->
+    value = value - 1
+    return value > 0
+
+while i = test!
+    print 'While! ' .. value
+
+----------------------------------------
+-- Indenation --------------------------
+----------------------------------------
+print 'OUTER-A'
+A = ->
+    print 'INNER-A'
+    B = ->
+        print 'INNER-INNER'
+    print 'INNER-B'
+    B!
+print 'OUTER-B'
+A!
