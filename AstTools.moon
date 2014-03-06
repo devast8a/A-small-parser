@@ -22,9 +22,6 @@ inspect = (value, offset='', seen={})->
         else
             return value
 
-require 'ExampleGrammar'
-Stream = require 'parser.Stream'
-
 -- Convert AST to lua
 local nodes
 T = (node)->
@@ -208,51 +205,7 @@ standardForm =
 
     Table: => {@}
 
-f = io\open 'ExampleGrammarTest.txt'
-stream = Stream f.read'*a'
-f.close!
-
-
-import LeftRecursive from require "parser.grammar.generator"
-
-stream.parser =
-    after: After
-    before: Before
-
-success,ast = Root.parse stream
-
--- Currently where error reporting happens
-if not success
-    line, col, pos = stream.getLineInfo stream.farestPos
-
-    p = math\min stream.farestPos, 10
-    area = stream.__source.sub(stream.farestPos - p, stream.farestPos + p * 2).gsub('[\r\t\n]',' ')
-
-    text = "Parse error: input(#{line}:#{col})"
-    padding = (' ').rep(#text+p+2)
-    print "#{text} '#{area}'"
-
-    -- The little cursor showing where the error occured
-    print "#{padding}^"
-
-    -- What the parser was
-    print "State:
-Longest: #{stream.farestParser}
-Last   : #{stream.lastParser}"
-
-    -- State of the stack
-    for v in *stream.tokenStack
-        print v.token
-
-    error!
-
-print '-- AST --'
-print inspect ast
-print '-- Slightly more standard form --'
-sast = S(ast)[1]
-print inspect sast
-print '-- LUA --'
-print T sast
-
-print '-- OUTPUT --'
-assert(loadstring(T sast))!
+return {
+    Standardize: S
+    ToLua: T
+}
