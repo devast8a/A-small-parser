@@ -1,0 +1,9 @@
+--[[
+    Some test files for FRUC3
+]]--
+
+print 'Testing'
+
+if number = 500 {
+    print 'Success!'
+}
