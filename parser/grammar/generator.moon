@@ -1,6 +1,15 @@
 local *
 import insert, remove from table
 
+replace = {
+    '\n': '\\n'
+    '\r': '\\r'
+    '\t': '\\t'
+}
+escape = =>
+    @gsub '([\n\t\r])', =>
+        replace[@]
+
 -- Helper method that acts as nice syntax for creating parsers in grammar files
 --  Used by parsers on parameters they take
 toParser = (input)->
@@ -98,7 +107,7 @@ class Keyword extends BaseParser
             }
 
     __tostring: =>
-        "Key #{@name}"
+        "#{@@__name} #{escape @name}"
 
 class Any extends BaseParser
     new: (parsers, options)=>
@@ -183,15 +192,6 @@ class Repeat extends BaseParser
 
     __tostring: =>
         "#{@@__name} #{@tag}"
-
-replace = {
-    '\n': '\\n'
-    '\r': '\\r'
-    '\t': '\\t'
-}
-escape = =>
-    @gsub '([\n\t\r])', =>
-        replace[@]
 
 -- Use lua pattern to match input
 class Pattern extends BaseParser
