@@ -1,28 +1,9 @@
 import insert, remove from table
+
 clone = => [v for v in *@]
-
-buildLineMap = (input)->
-    newLines = {'\r\n()', '\r[^\n]()', '[^\r]\n()'}
-    output = {}
-
-    max = 0
-    for newLine in *newLines
-        for pos in input.gmatch newLine
-            output[pos] = true
-            max = pos if pos > max
-
-    line = 2
-    for i=1,max
-        if output[i]
-            output[i] = line
-            line += 1
-    output[1] = 1
-
-    return output
-
 -- TODO: This class is one of two abominations that drive this entire thing, it needs urgent attention
 --  It does both what a root level parser should be doing and deals with stream level stuff
-class Stream
+class Stream extends require 'parser.Linemap'
     length: 0
     pos: 1
     debug: false
@@ -32,10 +13,10 @@ class Stream
     lastParser: nil
 
     new: (@__source, @parser)=>
+        super @__source
         @length = #@__source
         @stack = {}
         @tokenStack = {}
-        @linemap = buildLineMap @__source
         @indentationLevel = {0}
 
     advanceTo: (@pos)=>
@@ -43,14 +24,6 @@ class Stream
 
     isEOF: =>
         @pos >= @length
-
-    getLineInfo: (pos=@pos)=>
-        i = pos
-
-        while not @linemap[i] and i > 0
-            i-=1
-
-        return @linemap[i], pos - i, pos
 
     -- How we unwind the parser state
     push: =>
@@ -84,21 +57,15 @@ class Stream
     currentParser: 0
 
     runBefore: =>
-        return if @currentParser != 0
-        @currentParser = 1
         res, ast = @parser.before.parse @
-        @currentParser = 0
         return res, ast
 
     runAfter: =>
-        return if @currentParser != 0
-        @currentParser = 2
         res, ast = @parser.after.parse @
-        @currentParser = 0
         return res, ast
 
     updateParserStat: =>
-        if @pos > @farestPos and @currentParser == 0
+        if @pos > @farestPos
             @farestPos = @pos
             @farestParser = parser
 

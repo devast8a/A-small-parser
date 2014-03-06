@@ -36,17 +36,18 @@ compile = (compilerName, fileName)->
 
     -- TODO: Write better error reporting
     if not success
-        line, col, pos = stream.getLineInfo stream.farestPos
+        info = stream.getInfoFromOffset stream.farestPos
 
-        p = math\min stream.farestPos, 10
-        area = stream.__source.sub(stream.farestPos - p, stream.farestPos + p * 2).gsub('[\r\t\n]',' ')
+        for i = math\max(1, info.line-5), info.line-1
+            print stream.getLine(i)
 
-        text = "Parse error: input(#{line}:#{col})"
-        padding = (' ').rep(#text+p+2)
-        print "#{text} '#{area}'"
+        print info.getContent!
+        print (' ').rep(info.offsetToColumn(stream.farestPos) - 1) .. '^'
 
-        -- The little cursor showing where the error occured
-        print "#{padding}^"
+        line = info.line
+        col = info.offsetToColumn stream.farestPos
+
+        print "Parse error: input(#{line}:#{col})"
 
         -- What the parser was
         print "State:
