@@ -1,6 +1,5 @@
 import insert, remove from table
-clone = =>
-    [v for v in *@]
+clone = => [v for v in *@]
 
 buildLineMap = (input)->
     newLines = {'\r\n()', '\r[^\n]()', '[^\r]\n()'}
@@ -19,12 +18,10 @@ buildLineMap = (input)->
             line += 1
     output[1] = 1
 
-    for k,v in pairs output
-        print k, v
-
     return output
 
 -- TODO: This class is one of two abominations that drive this entire thing, it needs urgent attention
+--  It does both what a root level parser should be doing and deals with stream level stuff
 class Stream
     length: 0
     pos: 1
@@ -32,12 +29,14 @@ class Stream
     expecting: nil
     eof: false
     farestPos: 0
+    lastParser: nil
 
     new: (@__source, @parser)=>
         @length = #@__source
         @stack = {}
         @tokenStack = {}
         @linemap = buildLineMap @__source
+        @indentationLevel = {0}
 
     advanceTo: (@pos)=>
     advance: (count)=>@pos+=count
@@ -53,6 +52,7 @@ class Stream
 
         return @linemap[i], pos - i, pos
 
+    -- How we unwind the parser state
     push: =>
         insert @stack, {
             pos: @pos
@@ -60,6 +60,7 @@ class Stream
             expecting: @expecting
             eof: @eof
             tokenStack: @tokenStack
+            indentationLevel: @indentationLevel
         }
 
     popContinue: =>
@@ -75,22 +76,41 @@ class Stream
         @pos = state.pos
         @eof = state.eof
         @tokenStack = state.tokenStack
+        @lastParser = state.lastParser
+        @indentationLevel = state.indentationLevel
 
         @popRest state
 
-    match: (parser)=>
-        if @pos > @farestPos
+    currentParser: 0
+
+    runBefore: =>
+        return if @currentParser != 0
+        @currentParser = 1
+        res, ast = @parser.before.parse @
+        @currentParser = 0
+        return res, ast
+
+    runAfter: =>
+        return if @currentParser != 0
+        @currentParser = 2
+        res, ast = @parser.after.parse @
+        @currentParser = 0
+        return res, ast
+
+    updateParserStat: =>
+        if @pos > @farestPos and @currentParser == 0
             @farestPos = @pos
             @farestParser = parser
 
-        @parser.before.parse @
+    match: (parser)=>
+        @runBefore!
         res, node = parser.parse @
 
         if res
+            @updateParserStat!
             return res, node
 
-        if not @parser.after.parse @
-            return
+        return if not @runAfter!
 
         return @match parser
 
@@ -103,15 +123,11 @@ class Stream
         return @eof
 
     matchRegex: (pattern)=>
-        if @eof or #@tokenStack > 0
-            return
-
+        return if @eof or #@tokenStack > 0
         return @__source.match pattern, @pos
 
     extract: (length)=>
-        if @eof or #@tokenStack > 0
-            return
-
+        return if @eof or #@tokenStack > 0
         return @__source.sub @pos, @pos + length - 1
 
     peekToken: =>

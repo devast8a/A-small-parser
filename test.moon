@@ -22,8 +22,7 @@ inspect = (value, offset='', seen={})->
         else
             return value
 
-import Any, BaseParser, List, Pattern, Sequence from require "parser.grammar.generator"
-require 'Grammar'
+require 'ExampleGrammar'
 Stream = require 'parser.Stream'
 
 -- Convert AST to lua
@@ -31,6 +30,7 @@ local nodes
 T = (node)->
     f = nodes[node.tag]
     if not f
+        print inspect node
         error "Could not find lua converter for #{node.tag}"
     f node
 
@@ -60,7 +60,11 @@ nodes =
         "#{T @assignable} = #{T @expr}\n"
 
     BinaryOperator: =>
-        @[1]
+        switch @[1]
+            when '!='
+                '~='
+            else
+                @[1]
 
     BinaryExpression: =>
         "#{T @left} #{T @operator} #{T @right}\n"
@@ -74,6 +78,12 @@ nodes =
 
     TableKeyValue: =>
         "#{T @key}=#{T @value}"
+
+    If: =>
+        "if #{T @condition} then #{T @body} end\n"
+
+    While: =>
+        "while #{T @condition} do #{T @body} end\n"
 
 -- Convert the AST to be standard form
 -- eg.
@@ -107,6 +117,48 @@ standardForm =
 
     Index: =>
         return {@}
+
+    If: =>
+        local condition
+        ins = S @condition
+        last = ins[#ins]
+
+        if last.tag == 'Assignment'
+            condition = last.assignable
+        else
+            condition = last
+
+        insert ins, {
+            tag: 'If'
+            body: @body
+            condition: condition
+        }
+        return ins
+
+    While: =>
+        local condition
+        ins = S @condition
+        last = ins[#ins]
+        ins = [ins[i] for i=1,#ins-1]
+
+        if last.tag == 'Assignment'
+            insert ins, last
+            condition = last.assignable
+        else
+            condition = last
+
+        body = reduce S @body
+        body.tag = 'Block'
+
+        for i=1,#ins
+            insert body, ins[i]
+
+        insert ins, {
+            tag: 'While'
+            body: body
+            condition: condition
+        }
+        return ins
 
     Call: =>
         args = {}
@@ -156,23 +208,49 @@ standardForm =
 
     Table: => {@}
 
-f = io\open 'test.txt'
+f = io\open 'ExampleGrammarTest.txt'
 stream = Stream f.read'*a'
 f.close!
 
-p =
-    -- Match ~*~*ANYWHERE*~*~
-    any: Anytime
-stream.parser = p
+
+import LeftRecursive from require "parser.grammar.generator"
+
+stream.parser =
+    after: After
+    before: Before
+
 success,ast = Root.parse stream
+
+-- Currently where error reporting happens
 if not success
-    print 'Failed to parse input!'
+    line, col, pos = stream.getLineInfo stream.farestPos
+
+    p = math\min stream.farestPos, 10
+    area = stream.__source.sub(stream.farestPos - p, stream.farestPos + p * 2).gsub('[\r\t\n]',' ')
+
+    text = "Parse error: input(#{line}:#{col})"
+    padding = (' ').rep(#text+p+2)
+    print "#{text} '#{area}'"
+
+    -- The little cursor showing where the error occured
+    print "#{padding}^"
+
+    -- What the parser was
+    print "State:
+Longest: #{stream.farestParser}
+Last   : #{stream.lastParser}"
+
+    -- State of the stack
+    for v in *stream.tokenStack
+        print v.token
+
+    error!
 
 print '-- AST --'
---print inspect ast
+print inspect ast
 print '-- Slightly more standard form --'
 sast = S(ast)[1]
---print inspect sast
+print inspect sast
 print '-- LUA --'
 print T sast
 
