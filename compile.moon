@@ -11,9 +11,18 @@ help = ->
 
 compile = (compilerName, fileName)->
     -- Include the tools to compile
-    require compilerName
+    moonscript = require 'moonscript.base'
     Stream = require 'parser.Stream'
     AstTools = require 'AstTools'
+
+    -- Load the grammar
+    func = assert moonscript\loadfile compilerName
+    exported = {}
+    exported._G = exported
+
+    setfenv func, setmetatable exported,
+        __index: _G
+    func!
 
     -- Create a stream from the file
     file, msg = io\open fileName
@@ -28,11 +37,12 @@ compile = (compilerName, fileName)->
     -- Set the tools up
     import LeftRecursive from require "parser.grammar.generator"
 
+    exported.stream = stream
     stream.parser =
-        after: LeftRecursive After
-        before: LeftRecursive Before
+        after: LeftRecursive exported.After
+        before: LeftRecursive exported.Before
 
-    success,ast = stream.match Root
+    success,ast = stream.match exported.Root
 
     -- TODO: Write better error reporting
     if not success
