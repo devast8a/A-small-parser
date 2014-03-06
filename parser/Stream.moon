@@ -11,6 +11,11 @@ class Stream extends require 'parser.Linemap'
     eof: false
     farestPos: 0
     lastParser: nil
+    currentParser: 0
+
+    lastAfter: -1
+    lastBefore: -1
+    stateNumber: 0
 
     new: (@__source, @parser)=>
         super @__source
@@ -20,7 +25,10 @@ class Stream extends require 'parser.Linemap'
         @indentationLevel = {0}
 
     advanceTo: (@pos)=>
-    advance: (count)=>@pos+=count
+        @stateNumber+=1
+    advance: (count)=>
+        @pos+=count
+        @stateNumber+=1
 
     isEOF: =>
         @pos >= @length
@@ -28,12 +36,16 @@ class Stream extends require 'parser.Linemap'
     -- How we unwind the parser state
     push: =>
         insert @stack, {
+            stateNumber: @stateNumber
             pos: @pos
             debug: @debug
             expecting: @expecting
             eof: @eof
             tokenStack: @tokenStack
             indentationLevel: @indentationLevel
+            lastAfter: @lastAfter
+            lastBefore: @lastBefore
+            thisParser: @thisParser
         }
 
     popContinue: =>
@@ -43,6 +55,7 @@ class Stream extends require 'parser.Linemap'
     popRest: (state)=>
         @debug = state.debug
         @expecting = state.expecting
+        @thisParser = state.thisParser
 
     popRestore: =>
         state = remove @stack
@@ -51,26 +64,41 @@ class Stream extends require 'parser.Linemap'
         @tokenStack = state.tokenStack
         @lastParser = state.lastParser
         @indentationLevel = state.indentationLevel
+        @stateNumber = state.stateNumber
+        @lastAfter = state.lastAfter
+        @lastBefore = state.lastBefore
 
         @popRest state
 
     currentParser: 0
 
     runBefore: =>
+        return if @currentParser != 0
+        return if @lastBefore == @stateNumber
+        @lastBefore = @stateNumber
+        @currentParser = 1
         res, ast = @parser.before.parse @
+        @currentParser = 0
         return res, ast
-
+    
     runAfter: =>
+        return if @currentParser != 0
+        return if @lastAfter == @stateNumber
+        @lastAfter = @stateNumber
+        @currentParser = 2
+        @stateNumber
         res, ast = @parser.after.parse @
+        @currentParser = 0
         return res, ast
 
     updateParserStat: =>
-        if @pos > @farestPos
+        if @pos > @farestPos and @currentParser == 0
             @farestPos = @pos
             @farestParser = parser
 
     match: (parser)=>
         @runBefore!
+        @thisParser = parser
         res, node = parser.parse @
 
         if res
@@ -101,9 +129,11 @@ class Stream extends require 'parser.Linemap'
         @tokenStack[#@tokenStack]
 
     pushToken: (token)=>
+        @stateNumber+=1
         @tokenStack = clone @tokenStack
         insert @tokenStack, token
 
     popToken: =>
+        @stateNumber+=1
         @tokenStack = clone @tokenStack
         remove @tokenStack, token
