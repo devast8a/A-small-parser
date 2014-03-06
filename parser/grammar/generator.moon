@@ -14,7 +14,12 @@ toParser = (input)->
 -- Helper method that acts as nice syntax for creating parsers in grammar files
 --  Used by parsers on parameters they take
 toParserTable = (table)->
-    [toParser parser for parser in *table]
+    -- Passing in nil should throw an error
+    max = 0
+    for k,v in pairs table
+        max = math\max k, max
+
+    [toParser table[i] for i = 1, max]
 
 -- The base class for all parsers
 -- TODO: This class is one of two abominations that drive this entire thing, it needs urgent attention
@@ -46,6 +51,8 @@ class BaseParser
         res, ast = @exec stream
 
         if res
+            stream.lastParser = @
+
             if @builder
                 ast = @\builder ast, stream
 
@@ -204,7 +211,8 @@ class Pattern extends BaseParser
 
 -- Hacky method of avoding left recursion, look into a better way of doing it
 class LeftRecursive extends BaseParser
-    new: (parser)=>
+    new: (parser, options)=>
+        super options
         @parser = toParser parser
 
     exec: (stream)=>
@@ -213,6 +221,8 @@ class LeftRecursive extends BaseParser
         res, ast = stream.match @parser
         @LOCKED = false
         return res, ast
+
+    __tostring: => "#{@@__name} #{@parser}"
 
 -- Tries matching with the given parser and return a successful result
 --  or return an empty result
@@ -227,6 +237,8 @@ class Optional extends BaseParser
                 tag: 'Ignore'
             }
         return res, ast
+
+    __tostring: => "#{@@__name} #{@parser}"
 
 --TODO: Not is kind of slow, especially in the common usecase of it
 class Not extends BaseParser
@@ -247,6 +259,10 @@ class Not extends BaseParser
             tag: 'Ignore'
         }
 
+    __tostring: =>
+        parsers = table\concat ["(#{parser})" for parser in *@parsers], ','
+        "#{@@__name} #{parsers}"
+
 -- Peek takes a parser and will still match the input but not advance the stream offsets
 class Peek extends BaseParser
     new: (parser, options)=>
@@ -266,10 +282,21 @@ class Peek extends BaseParser
             tag: 'Ignore'
         }
 
+    __tostring: => "#{@@__name} #{@parser}"
+
+class On extends BaseParser
+    new: (@parserName, options)=>
+        super options
+
+    exec: (stream)=>
+        if stream.lastParser and stream.lastParser.tag
+            return stream.lastParser.tag == @parserName
+
 -- Match a token
 class Token extends BaseParser
     new: (matcher, options)=>
         super options
+        @name = matcher
 
         if type(matcher)=='string'
             @matcher = (token)->
@@ -284,12 +311,8 @@ class Token extends BaseParser
             if @\matcher token
                 return true, stream.popToken!
 
--- Match the EOF token
-EOF = Token 'EOF'
-
--- Indentation matching tokens
-INDENT = Token 'INDENT'
-DEDENT = Token 'DEDENT'
+    __tostring: =>
+        "#{@@__name} #{@name}"
 
 return {
     :Any
@@ -297,6 +320,7 @@ return {
     :BnExp
     :LeftRecursive
     :Optional
+    :On
     :Not
     :Pattern
     :Peek
@@ -306,9 +330,9 @@ return {
     :Keyword
 
     -- Token matchers
-    :EOF
-    :INDENT
-    :DEDENT
+    EOF: Token 'EOF'
+    INDENT: Token 'INDENT'
+    DEDENT: Token 'DEDENT'
 
     -- Quick token creation function
     T: (tokenName)->
