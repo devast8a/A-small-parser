@@ -1,8 +1,8 @@
 local *
-import insert, remove from table
+import concat, insert, remove from table
 moonscript = require'moonscript.base'
 
-inspect = (value, offset='', seen={})->
+export inspect = (value, offset='', seen={})->
     seen[0] = 0 if not seen[0]
 
     return seen[value] if seen[value]
@@ -22,6 +22,33 @@ inspect = (value, offset='', seen={})->
         else
             return value
 
+replace =
+    '\n': '\\n'
+    '\r': '\\r'
+    '\t': '\\t'
+    '\\': '\\\\'
+    '\"': '\\\"'
+    '\'': '\\\''
+
+escape = (str)->
+    for find,repl in pairs replace
+        str = str.gsub find, repl
+    return str
+
+serialize = (input)->
+    return switch type input
+        when 'number'
+            "#{input}"
+        when 'string'
+            "\"#{escape input}\""
+        when 'table'
+            content = for k,v in pairs input
+                "[#{serialize k}]=#{serialize v}"
+            '{' .. concat(content, ',') .. '}'
+        else
+            error 'Unable to serialize ' .. type input
+
+
 -- Convert AST to lua
 local nodes
 T = (node)->
@@ -31,8 +58,6 @@ T = (node)->
         error "Could not find lua converter for #{node.tag}"
     f node
 
-concat = table.concat
-
 map = (func)=>
     [func v for v in *@]
 
@@ -40,7 +65,7 @@ nodes =
     String: => @[1]
     Number: => @[1]
     Identifier: => @[1]
-    Ignore: =>
+    Ignore: => ""
 
     Function: =>
         args = concat map(@args, T), ','
@@ -64,7 +89,7 @@ nodes =
                 @[1]
 
     BinaryExpression: =>
-        "#{T @left} #{T @operator} #{T @right}\n"
+        "(#{T @left} #{T @operator} #{T @right})\n"
 
     Index: =>
         "#{T @left}.#{T @right}"
@@ -82,12 +107,19 @@ nodes =
     While: =>
         "while #{T @condition} do #{T @body} end\n"
 
+    Escape: =>
+        serialize @content
+
+    IndexB: =>
+        "#{T @left}[#{T @right}]"
+
 -- Convert the AST to be standard form
 -- eg.
 local standardForm
 S = (node)->
     f = standardForm[node.tag]
     if not f
+        print inspect node
         error "Could not find standardizer for #{node.tag}"
     f node
 
@@ -97,6 +129,19 @@ reduce = =>
         for v in *t
             insert output, v
     return output
+
+simple = {key, true for key in *{
+    'String', 'Number', 'Identifier', 'Table', 'BinaryExpression', 'Function', 'Call'
+}}
+isSimple = (ast)->
+    simple[ast.tag]
+
+extractVariable = (ast)->
+    switch ast.tag
+        when 'Assignment'
+            ast.assignable
+        else
+            error 'Could not extract variable from ' .. ast.tag
 
 standardForm =
     String: => {@}
@@ -115,20 +160,22 @@ standardForm =
     Index: =>
         return {@}
 
+    IndexB: =>
+        return {@}
+
     If: =>
-        local condition
         ins = S @condition
         last = ins[#ins]
+        ins[#ins] = nil
 
-        if last.tag == 'Assignment'
-            condition = last.assignable
-        else
-            condition = last
+        if not isSimple last
+            insert ins, last
+            last = extractVariable last
 
         insert ins, {
             tag: 'If'
             body: @body
-            condition: condition
+            condition: last
         }
         return ins
 
@@ -161,6 +208,9 @@ standardForm =
         args = {}
         ins = {}
 
+        if @self
+            insert args, @self
+
         for arg in *@args
             arg = S arg
 
@@ -190,13 +240,21 @@ standardForm =
 
     Assignment: =>
         assignable = S @assignable
-        expr = S @expr
 
-        {{
+        ins = S @expr
+        last = ins[#ins]
+        ins = [ins[i] for i=1,#ins-1]
+
+        if not isSimple last
+            insert ins, last
+            expr = extractVariable last
+
+        insert ins, {
             tag: 'Assignment'
             assignable: assignable[1]
-            expr: expr[1]
-        }}
+            expr: last
+        }
+        ins
 
     Block: =>
         block = reduce map @, S
@@ -205,7 +263,49 @@ standardForm =
 
     Table: => {@}
 
+DoAst = (ast, env, ...)=>
+    assert ast
+    assert env
+
+    lua = T ast
+    --print lua
+    f = assert loadstring lua
+    setfenv f, env
+    f ...
+
+LeftChainToTree = (tag, chain, extract)=>
+    previous = {
+        tag: tag
+        left: extract chain[1]
+    }
+
+    length = #chain
+
+    if length == 1
+        return previous
+
+    previous.right = extract chain[2]
+
+    for i=3,#chain
+        previous = {
+            tag: 'Index'
+            left: previous
+            right: extract chain[3]
+        }
+
+    return {
+        tag: tag
+        left: previous
+    }
+
 return {
     Standardize: S
     ToLua: T
+    LeftChainToTree: LeftChainToTree
+    EscapeAst: (ast)=>
+        {
+            tag: 'Escape'
+            content: ast
+        }
+    :DoAst
 }
