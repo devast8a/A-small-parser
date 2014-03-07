@@ -16,7 +16,10 @@ toParser = (input)->
     if type(input) == 'table' and input.isParser
         input
     else if type(input) == 'string'
-        Keyword input
+        if input.sub(1,1) == '/'
+            Pattern input.sub(2,-2)
+        else
+            Keyword input
     else
         error 'Unable to turn input into a parser'
 
