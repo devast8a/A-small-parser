@@ -186,12 +186,13 @@ class Repeat extends BaseParser
 
             return true, output
         else
-            return true, while true
+            output = while true
                 res,node = stream.match @item
                 if res
                     node
                 else
                     break
+            return #output > 1, output
 
     __tostring: =>
         "#{@@__name} #{@tag}"
