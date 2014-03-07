@@ -1,46 +1,54 @@
-import Any, Pattern, Sequence, Not, Peek, EOF, T from require 'parser.grammar.generator'
+import Any, Pattern, Sequence, Not, Peek, On, Optional, EOF, T from require 'parser.grammar.generator'
+import insert, remove from table
+clone = => [v for v in *@]
 
 Whitespace = Pattern '[ \t]*'
-Newline = Any {'\r', '\n', '\r\n'}
+Newline = Any {'\r', '\n', '\r\n'},
+    tag: 'Newline'
 
--- TODO: Add ability to store custom state for instances of parsers
-Generate = (indentationLevel)=>
-    Sequence {Newline, Whitespace, Peek Not Newline},
-        builder: (stream)=>
-            -- Whitespace is node 2, content is node 1
-            whitespaceLength = #@[2][1]
+Generate = Sequence {Newline, Optional(Whitespace), Peek Not Newline},
+    tag: 'Indent-Generator'
+    builder: (stream)=>
+        -- Whitespace is node 2, content is node 1
+        node = @[2][1]
+        indentationLevel = stream.indentationLevel
+        whitespaceLength = node and #node or 0
 
-            if whitespaceLength > indentationLevel[#indentationLevel]
-                stream.pushToken T'INDENT'
-                table\insert indentationLevel, whitespaceLength
+        if whitespaceLength > indentationLevel[#indentationLevel]
+            --print '>', stream.getLineInfo!
+            stream.pushToken T'INDENT'
 
+            stream.indentationLevel = clone indentationLevel
+            indentationLevel = stream.indentationLevel
+            insert indentationLevel, whitespaceLength
+        else if whitespaceLength == indentationLevel[#indentationLevel]
+            --print '=', stream.getLineInfo!
+            stream.pushToken T'NEWLINE'
+        else
             while whitespaceLength < indentationLevel[#indentationLevel]
+                --print '<', stream.getLineInfo!
                 stream.pushToken T'DEDENT'
-                table\remove indentationLevel
+                stream.indentationLevel = clone indentationLevel
+                indentationLevel = stream.indentationLevel
+                remove indentationLevel
 
--- In the event of an EOF, push required DEDENT tokens onto stack
-AutoDedent = (indentationLevel)=>
-    Peek EOF,
-        builder: (stream)=>
-            return 'FAIL' if #indentationLevel <= 1
+AutoDedent = Peek EOF,
+    tag: 'Auto-dedent'
+    builder: (stream)=>
+        indentationLevel = stream.indentationLevel
+        return 'FAIL' if #indentationLevel <= 1
 
-            while #indentationLevel > 1
-                stream.pushToken T'DEDENT'
-                table\remove indentationLevel
-
-GenerateAndAutoDedent = =>
-    indentationLevel = {0}
-
-    Any {
-        -- nil because not calling with self
-        Generate nil, indentationLevel
-        AutoDedent nil, indentationLevel
-    }
+        while #indentationLevel > 1
+            --print '-', stream.getLineInfo!
+            stream.pushToken T'DEDENT'
+            stream.indentationLevel = clone indentationLevel
+            indentationLevel = stream.indentationLevel
+            remove indentationLevel
 
 return {
     :AutoDedent
     :Generate
-    :GenerateAndAutoDedent
+    GenerateAndAutoDedent: Any{Generate, AutoDedent}
     :Whitespace
     :Newline
 }
