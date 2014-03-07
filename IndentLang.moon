@@ -173,6 +173,28 @@ IndexRHS.add Index
 IndexRHS.add Identifier
 
 --------------------------------------------------
+-- Metalevel Shift Return Ast --------------------
+--------------------------------------------------
+MetalevelShiftReturnAst = Any {}
+
+MetalevelShiftReturnAst.add Sequence {'+{', INDENT, Statement, DEDENT, '}'},
+    builder: =>
+        require'AstTools'\EscapeAst @[3]
+
+--------------------------------------------------
+-- Metalevel Shift Run Code ----------------------
+--------------------------------------------------
+MetalevelShiftRunCode = Any {}
+
+MetalevelShiftRunCode.add Sequence {'-{', INDENT, Block, DEDENT, '}'},
+    builder: =>
+        require'AstTools'.do_ast @[3], _G
+
+MetalevelShiftRunCode.add Sequence {'-{', Statement, '}'},
+    builder: =>
+        require'AstTools'\do_ast @[2][1]
+
+--------------------------------------------------
 -- Table -----------------------------------------
 --------------------------------------------------
 Table = Any {},
@@ -250,6 +272,8 @@ __     E     Table
 __ A C E I   Identifier
 __     E     String
 __     E     Number
+__     E   S MetalevelShiftRunCode
+__     E     MetalevelShiftReturnAst
 
 --------------------------------------------------
 -- Parser Configuration --------------------------
