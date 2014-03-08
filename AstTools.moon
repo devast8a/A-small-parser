@@ -1,8 +1,9 @@
+export inspect
 local *
 import concat, insert, remove from table
 moonscript = require'moonscript.base'
 
-export inspect = (value, offset='', seen={})->
+inspect = (value, offset='', seen={})->
     seen[0] = 0 if not seen[0]
 
     return seen[value] if seen[value]
@@ -92,7 +93,10 @@ nodes =
         "(#{T @left} #{T @operator} #{T @right})\n"
 
     Index: =>
-        "#{T @left}.#{T @right}"
+        if @right.tag == 'Number'
+            "#{T @left}[#{T @right}]"
+        else
+            "#{T @left}.#{T @right}"
 
     Table: =>
         content = concat map(@content, T), ','
@@ -131,7 +135,7 @@ reduce = =>
     return output
 
 simple = {key, true for key in *{
-    'String', 'Number', 'Identifier', 'Table', 'BinaryExpression', 'Function', 'Call'
+    'String', 'Number', 'Identifier', 'Table', 'BinaryExpression', 'Function', 'Call', 'Index', 'Escape', 'IndexB'
 }}
 isSimple = (ast)->
     simple[ast.tag]
@@ -263,15 +267,55 @@ standardForm =
 
     Table: => {@}
 
-DoAst = (ast, env, ...)=>
-    assert ast
-    assert env
+    Escape: => {@}
 
-    lua = T ast
-    --print lua
-    f = assert loadstring lua
-    setfenv f, env
-    f ...
+tree = {
+    right: {
+        right: 'C'
+        left: 'B'
+    }
+    left: 'A'
+}
+
+isTable = =>
+    type(@) == 'table'
+
+FlipRecursiveTree = (tree, recursive, leaf, selector=isTable)->
+    newTree = tree[leaf]
+    previousNode = tree[recursive]
+
+    while selector previousNode
+        -- When assigning leaf and recursive are reversed
+        newTree = {
+            [leaf]: newTree
+            [recursive]: previousNode[leaf]
+        }
+        previousNode = previousNode[recursive]
+
+    return {
+        [leaf]: newTree
+        [recursive]: previousNode
+    }
+
+LoadAst = (ast, options={})->
+    assert ast, "Ast must not be nil"
+    func, err = loadstring T(ast), options.name
+
+    if func
+        if options.env
+            setfenv func, options.env
+
+    return func, err
+
+DoAst = (ast, options={})->
+    f = assert LoadAst ast, options
+    f!
+
+RightToLeftRecursiveTree = (tree, selector)->
+    FlipRecursiveTree tree, 'right', 'left', selector
+
+LeftToRightRecursiveTree = (tree, selector)->
+    FlipRecursiveTree tree, 'left', 'right', selector
 
 LeftChainToTree = (tag, chain, extract)=>
     previous = {
@@ -288,7 +332,7 @@ LeftChainToTree = (tag, chain, extract)=>
 
     for i=3,#chain
         previous = {
-            tag: 'Index'
+            tag: tag
             left: previous
             right: extract chain[3]
         }
@@ -302,10 +346,11 @@ return {
     Standardize: S
     ToLua: T
     LeftChainToTree: LeftChainToTree
-    EscapeAst: (ast)=>
+    EscapeAst: (ast)->
         {
             tag: 'Escape'
             content: ast
         }
     :DoAst
+    :LoadAst
 }
