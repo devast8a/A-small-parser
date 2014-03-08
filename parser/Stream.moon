@@ -72,6 +72,30 @@ class Stream extends require 'parser.Linemap'
 
     currentParser: 0
 
+    doDebug: =>
+        -- Go through the stack
+        offset = ''
+        for v in *@stack
+            print "#{offset}#{v.thisParser}"
+            offset ..= '  '
+
+        -- get current line info
+        info = @getInfoFromOffset @pos
+        print "State/B/A: #{@stateNumber}/#{@lastBefore}/#{@lastAfter} Current: #{@currentParser}"
+        print "Line: #{info.line} Col: #{info.offsetToColumn @pos} Off: #{@pos}"
+
+        print 'Input:'
+        print info.getContent!
+        print (" ").rep(info.offsetToColumn(@pos) - 1) .. '^'
+
+        if #@tokenStack > 0
+            print 'Tokens: '
+            for v in *@tokenStack
+                print '    ' .. v.token
+
+        io\read!
+        print '------------------------------'
+
     runBefore: =>
         return if @currentParser != 0
         return if @lastBefore == @stateNumber
