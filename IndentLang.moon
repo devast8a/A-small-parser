@@ -110,7 +110,12 @@ CallArgument = Any {}
 CallArgumentList = Any {}
 CallArgumentSeparator = Any {}
 
-Call.add Sequence {Optional(DotIndexChain), Identifier, Repeat(CallArgument, separator: CallArgumentSeparator)},
+CallArgumentList.add Repeat(CallArgument, separator: CallArgumentSeparator)
+CallArgumentList.add Sequence{'(', Repeat(CallArgument, separator: CallArgumentSeparator), ')'},
+    builder: =>
+        return @[2]
+
+Call.add Sequence {Optional(DotIndexChain), Identifier, CallArgumentList},
     builder: =>
         chain, tail, args = unpack @
 
@@ -130,7 +135,7 @@ Call.add Sequence {Optional(DotIndexChain), Identifier, Repeat(CallArgument, sep
                 name: tail
             }
 
-Call.add Sequence {Identifier, '::', Identifier, Repeat(CallArgument, separator: CallArgumentSeparator)},
+Call.add Sequence {Identifier, '::', Identifier, CallArgumentList},
     builder: =>
         {
             name: {
