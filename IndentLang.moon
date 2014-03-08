@@ -1,12 +1,13 @@
+-- Export anything that begins with a capital letter
+AstTools = require 'AstTools'
+export ^
 import INDENT, DEDENT, Any, On, BaseParser, Repeat, LeftRecursive, Optional, Not, Pattern, Sequence, Keyword, Token, Peek, EOF, T from require 'parser.grammar.generator'
 NEWLINE = Token 'NEWLINE'
-
--- Export anything that begins with a capital letter
-export ^
 
 Expression = Any {}     -- Anything that may return a result
 Statement = Any {}      -- Anything that is allowed to be on its own
 Assignable = Any {}     -- Anything that can be assigned to
+DotIndexable = Any {}   -- Anything that can be on the left hand side of a dot index expression
 
 Block = Repeat Statement,
     tag: 'Block'
@@ -16,6 +17,8 @@ SpaceTab = Pattern '[ \t]+'
 EmptyLine = Sequence {Newline, Optional(SpaceTab), Peek Newline}
 LuaComment = Pattern '%-%-[^\r\n]+'
 LuaBlockComment = Sequence {'--[[', Repeat(Not(']]')), ']]'}
+
+DotIndexChain = Any {}
 
 --------------------------------------------------
 -- Atoms -----------------------------------------
@@ -65,7 +68,7 @@ BinaryExpression = Sequence {LeftRecursive(Expression), BinaryOperator, Expressi
 BinaryOperator.add Any{
     '+'
     '-'
-    '/'
+    Keyword '/'
     '*'
     '%'
     '..'
@@ -76,6 +79,19 @@ BinaryOperator.add Any{
     '=='
     '!='
 }
+
+--------------------------------------------------
+-- Bracket Indexing ------------------------------
+--------------------------------------------------
+BracketIndexable = Any {}
+
+BracketIndex = Sequence {BracketIndexable, '[', Expression, ']'},
+    tag: 'IndexB'
+    builder: =>
+        {
+            left: @[1]
+            right: @[3]
+        }
 
 --------------------------------------------------
 -- Brackets - Order of Operations ----------------
@@ -93,6 +109,39 @@ Callable = Any {}
 CallArgument = Any {}
 CallArgumentList = Any {}
 CallArgumentSeparator = Any {}
+
+Call.add Sequence {DotIndexChain, Identifier, Repeat(CallArgument, separator: CallArgumentSeparator)},
+    builder: =>
+        chain, tail, args = unpack @
+
+        chain = AstTools.LeftChainToTree 'Index', chain, (item)->
+            item[1]
+        chain.right = tail
+
+        {
+            self: chain.left
+            args: args
+            name: chain
+        }
+
+Call.add Sequence {Identifier, '::', Identifier, Repeat(CallArgument, separator: CallArgumentSeparator)},
+    builder: =>
+        {
+            name: {
+                tag: 'Index'
+                left: @[1]
+                right: @[3]
+            }
+            args: @[4]
+        }
+
+Call.add Sequence {Callable, '(', Repeat(CallArgument, separator: CallArgumentSeparator), ')'},
+    builder: =>
+        name, args = unpack @
+        {
+            args: args
+            name: name
+        }
 
 Call.add Sequence {Callable, Repeat(CallArgument, separator: CallArgumentSeparator)},
     builder: =>
@@ -114,6 +163,27 @@ CallArgument.add Expression
 CallArgumentSeparator.add Keyword ','
 
 --------------------------------------------------
+-- Dot Indexing ----------------------------------
+--------------------------------------------------
+DotIndex = Any {},
+    tag: 'Index'
+
+DotIndexWith = Any {}
+
+DotIndex.add Sequence {DotIndexChain, DotIndexWith},
+    builder: =>
+        index = AstTools.LeftChainToTree 'Index', @[1], (item)->
+            item[1]
+
+        index.right = @[2]
+        index
+
+DotIndexChain.add Repeat(Sequence {DotIndexable, '.'})
+
+DotIndexWith.add Identifier
+DotIndexWith.add Number
+
+--------------------------------------------------
 -- Function Definition ---------------------------
 --------------------------------------------------
 Function = Any {}
@@ -122,10 +192,17 @@ FunctionParameter = Any {}
 FunctionParameterList = Sequence {'(', Repeat(FunctionParameter, separator:','), ')'},
     builder: => @[2]
 
-Function.add Sequence{Optional(FunctionParameterList), '->', INDENT, Block, DEDENT},
+Function.add Sequence{Optional(FunctionParameterList), '/([-=])>/', INDENT, Block, DEDENT},
     tag: 'Function'
     builder: =>
-        args, _, _, body = unpack @
+        args, arrow, _, body = unpack @
+
+        if arrow[2] == '='
+            table\insert args, 1, {
+                tag: 'Identifier'
+                'self'
+            }
+
         {
             args: args
             body: body
@@ -149,37 +226,13 @@ If.add Sequence {'if', Expression, INDENT, Block, DEDENT},
         }
 
 --------------------------------------------------
--- Indexing --------------------------------------
---------------------------------------------------
-Index = Any {},
-    tag: 'Index'
-
--- Anything that can be on the left hand side of an Index expression
-Indexable = Any {}
-
--- Anything that can be on the right hand side of an Index expression
-IndexRHS = Any {}
-
-Index.add Sequence {LeftRecursive(Indexable), '.', IndexRHS},
-    builder: =>
-        left, _, right = unpack @
-
-        {
-            left: left
-            right: right
-        }
-
-IndexRHS.add Index
-IndexRHS.add Identifier
-
---------------------------------------------------
 -- Metalevel Shift Return Ast --------------------
 --------------------------------------------------
 MetalevelShiftReturnAst = Any {}
 
-MetalevelShiftReturnAst.add Sequence {'+{', INDENT, Statement, DEDENT, '}'},
+MetalevelShiftReturnAst.add Sequence {'+{', INDENT, Block, DEDENT, '}'},
     builder: =>
-        require'AstTools'\EscapeAst @[3]
+        AstTools\EscapeAst @[3]
 
 --------------------------------------------------
 -- Metalevel Shift Run Code ----------------------
@@ -188,11 +241,28 @@ MetalevelShiftRunCode = Any {}
 
 MetalevelShiftRunCode.add Sequence {'-{', INDENT, Block, DEDENT, '}'},
     builder: =>
-        require'AstTools'.do_ast @[3], _G
+        AstTools\DoAst @[3], _G
 
 MetalevelShiftRunCode.add Sequence {'-{', Statement, '}'},
     builder: =>
-        require'AstTools'\do_ast @[2][1]
+        error 'Not implemented yet'
+
+--------------------------------------------------
+-- Self Index ------------------------------------
+--------------------------------------------------
+SelfIndex = Pattern '@([_a-zA-Z0-9]*)',
+    tag: 'Index'
+    builder: =>
+        {
+            left: {
+                tag: 'Identifier'
+                'self'
+            }
+            right: {
+                tag: 'Identifier'
+                @[2]
+            }
+        }
 
 --------------------------------------------------
 -- Table -----------------------------------------
@@ -253,27 +323,30 @@ Statement.add Any{NEWLINE}, tag: 'Ignore'
 local *
 __ = ->
 A = => Assignable.add @
+B = => BracketIndexable.add @
+D = => DotIndexable.add @
 C = => Callable.add @
 E = => Expression.add @
-I = => Indexable.add @
 S = => Statement.add @
 export ^
 
--- A C E I S - Calling Flags
-__     E   S Assignment
-__         S While
-__         S If
-__     E   S Call
-__ A C E I   Index
-__     E     BinaryExpression
-__     E     Function
-__     E     BracketedExpression
-__     E     Table
-__ A C E I   Identifier
-__     E     String
-__     E     Number
-__     E   S MetalevelShiftRunCode
-__     E     MetalevelShiftReturnAst
+-- A B C D E S Parser
+__         E S Assignment
+__           S While
+__           S If
+__         E S Call
+__         E   BinaryExpression
+__         E   Function
+__         E   BracketedExpression
+__   B   D E   Table
+__   B   D E   String
+__   B   D E   Number
+__ A       E   BracketIndex
+__ A B     E   DotIndex
+__ A B C D E   SelfIndex
+__ A B C D E   Identifier
+__         E S MetalevelShiftRunCode
+__         E   MetalevelShiftReturnAst
 
 --------------------------------------------------
 -- Parser Configuration --------------------------
