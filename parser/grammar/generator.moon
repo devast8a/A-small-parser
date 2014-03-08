@@ -335,7 +335,6 @@ class Token extends BaseParser
 return {
     :Any
     :BaseParser
-    :BnExp
     :LeftRecursive
     :Optional
     :On
