@@ -42,15 +42,43 @@ v = 3 * (1 + 2)
 --v = (1 + 2) * 3
 
 ----------------------------------------
+-- Bracketed Indexing ------------------
+----------------------------------------
+Table = {}
+Table['Value'] = 'Bracket Index'
+print Table['Value']
+
+----------------------------------------
+-- Calling -----------------------------
+----------------------------------------
+NoTable = {item: '1: Hello'}
+Table = {item: '2: Hello'}
+Table.Table = {item: '3: Hello'}
+Table.Table.Table = {item: '4: Hello'}
+
+Func = (p2,p3)=>
+    print self.item, p2, @item, p3
+Table.Func = Func
+Table.Table.Func = Func
+Table.Table.Table.Func = Func
+
+Func NoTable, 'World', 'A'
+Table.Func 'World', 'B'
+Table.Table.Func 'World', 'C'
+Table.Table.Table.Func 'World', 'D'
+
+----------------------------------------
 -- Functions ---------------------------
 ----------------------------------------
 f1 = ->
     return 'F1'
 
-print 'Declare F1'
 print 'Call F1: ' .. f1!
 
 f2 = (arg)->
+    return arg .. ' Arguments!'
+
+f3 = (arg)=>
     return arg .. ' Arguments!'
 
 print f2 'Hello'
@@ -75,6 +103,9 @@ A.B = {}
 A.B.C = {}
 A.B.C.D = 'Indexing'
 print A.B.C.D
+
+--A['C'] = 'Hello'
+--print A['C']
 
 ----------------------------------------
 -- Tables ------------------------------
