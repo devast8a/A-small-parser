@@ -110,19 +110,25 @@ CallArgument = Any {}
 CallArgumentList = Any {}
 CallArgumentSeparator = Any {}
 
-Call.add Sequence {DotIndexChain, Identifier, Repeat(CallArgument, separator: CallArgumentSeparator)},
+Call.add Sequence {Optional(DotIndexChain), Identifier, Repeat(CallArgument, separator: CallArgumentSeparator)},
     builder: =>
         chain, tail, args = unpack @
 
-        chain = AstTools.LeftChainToTree 'Index', chain, (item)->
-            item[1]
-        chain.right = tail
+        if chain.tag != 'Ignore'
+            chain = AstTools\LeftChainToTree 'Index', chain, (item)->
+                item[1]
+            chain.right = tail
 
-        {
-            self: chain.left
-            args: args
-            name: chain
-        }
+            return {
+                self: chain.left
+                args: args
+                name: chain
+            }
+        else
+            return {
+                args: args
+                name: tail
+            }
 
 Call.add Sequence {Identifier, '::', Identifier, Repeat(CallArgument, separator: CallArgumentSeparator)},
     builder: =>
@@ -136,14 +142,6 @@ Call.add Sequence {Identifier, '::', Identifier, Repeat(CallArgument, separator:
         }
 
 Call.add Sequence {Callable, '(', Repeat(CallArgument, separator: CallArgumentSeparator), ')'},
-    builder: =>
-        name, args = unpack @
-        {
-            args: args
-            name: name
-        }
-
-Call.add Sequence {Callable, Repeat(CallArgument, separator: CallArgumentSeparator)},
     builder: =>
         name, args = unpack @
         {
@@ -172,7 +170,7 @@ DotIndexWith = Any {}
 
 DotIndex.add Sequence {DotIndexChain, DotIndexWith},
     builder: =>
-        index = AstTools.LeftChainToTree 'Index', @[1], (item)->
+        index = AstTools\LeftChainToTree 'Index', @[1], (item)->
             item[1]
 
         index.right = @[2]
@@ -343,7 +341,7 @@ __   B   D E   String
 __   B   D E   Number
 __ A       E   BracketIndex
 __ A B     E   DotIndex
-__ A B C D E   SelfIndex
+__ A B   D E   SelfIndex
 __ A B C D E   Identifier
 __         E S MetalevelShiftRunCode
 __         E   MetalevelShiftReturnAst
