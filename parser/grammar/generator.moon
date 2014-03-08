@@ -129,6 +129,11 @@ class Any extends BaseParser
         insert @parsers, parser
         return parser
 
+    insert: (parser, offset)=>
+        parser = toParser parser
+        insert @parsers, offset, parser
+        return parser
+
     __tostring: =>
         "#{@@__name} #{@tag}"
 
