@@ -320,35 +320,25 @@ RightToLeftRecursiveTree = (tree, selector)->
 LeftToRightRecursiveTree = (tree, selector)->
     FlipRecursiveTree tree, 'left', 'right', selector
 
-LeftChainToTree = (tag, chain, extract)=>
-    previous = {
-        tag: tag
-        left: extract chain[1]
-    }
+LeftChainToTree = (tag, chain, extract)->
+    newTree = extract chain[1]
 
-    length = #chain
-
-    if length == 1
-        return previous
-
-    previous.right = extract chain[2]
-
-    for i=3,#chain
-        previous = {
+    for i=2,#chain
+        newTree = {
             tag: tag
-            left: previous
-            right: extract chain[3]
+            left: newTree
+            right: extract chain[i]
         }
 
     return {
         tag: tag
-        left: previous
+        left: newTree
     }
 
 return {
     Standardize: S
     ToLua: T
-    LeftChainToTree: LeftChainToTree
+    :LeftChainToTree
     EscapeAst: (ast)->
         {
             tag: 'Escape'
