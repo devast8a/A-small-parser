@@ -1,4 +1,5 @@
 local *
+
 run = ->
     if #arg != 2
         help!
@@ -38,15 +39,14 @@ compile = (compilerName, fileName)->
     import LeftRecursive from require "parser.grammar.generator"
 
     exported.stream = stream
+    exported.parser = exported
+
     stream.parser =
         after: LeftRecursive exported.After
         before: LeftRecursive exported.Before
 
-    success,ast = stream.match exported.Root
-
-    -- TODO: Write better error reporting
-    if not success
-        info = stream.getInfoFromOffset stream.farestPos
+    stream.handleError = (text)=>
+        info = stream.getInfoFromOffset stream.farestPos or stream.pos
 
         for i = math\max(1, info.line-5), info.line-1
             print stream.getLine(i)
@@ -57,7 +57,7 @@ compile = (compilerName, fileName)->
         line = info.line
         col = info.offsetToColumn stream.farestPos
 
-        print "Parse error: input(#{line}:#{col})"
+        print "input(#{line}:#{col}) #{text}"
 
         -- What the parser was
         print "State:
@@ -68,14 +68,19 @@ compile = (compilerName, fileName)->
         for v in *stream.tokenStack
             print v.token
 
+
+    start = os\clock!
+    success,ast = stream.match exported.Root
+    print "Parsing took: #{(os\clock! - start) * 1000}ms"
+
+    -- TODO: Write better error reporting
+    if not success
+        stream.handleError 'Unable to match input'
         return
     else
         sast = AstTools\Standardize(ast)[1]
         lua = AstTools\ToLua sast
 
-        print '------- Lua'
-        print lua
-        print '------- Output'
         assert(loadstring(lua))!
 
 run!
