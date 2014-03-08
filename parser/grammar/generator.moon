@@ -192,7 +192,7 @@ class Repeat extends BaseParser
                     node
                 else
                     break
-            return #output > 1, output
+            return #output > 0, output
 
     __tostring: =>
         "#{@@__name} #{@tag}"
