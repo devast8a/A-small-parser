@@ -1,6 +1,8 @@
 local *
 import insert, remove from table
 
+Stream = require 'parser.Stream'
+
 replace = {
     '\n': '\\n'
     '\r': '\\r'
@@ -94,6 +96,13 @@ class BaseParser
 
     exec: =>
         error 'You must implement "exec" in child classes'
+
+    parseString: (string)=>
+        parser = {
+            before: Any {}
+            after: Any {}
+        }
+        Stream(string, parser).match @
 
 -- Match against a specific piece of text
 class Keyword extends BaseParser

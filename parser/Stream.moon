@@ -105,7 +105,7 @@ class Stream extends require 'parser.Linemap'
             @updateParserStat!
             return res, node
 
-        return if not @runAfter!
+        return false if not @runAfter!
 
         return @match parser
 
