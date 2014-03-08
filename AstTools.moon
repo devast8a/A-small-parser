@@ -240,7 +240,11 @@ standardForm =
 
         return ins
 
-    Function: => {@}
+    Function: => {{
+        tag: 'Function'
+        args: @args
+        body: S(@body)[1]
+    }}
 
     Assignment: =>
         assignable = S @assignable
