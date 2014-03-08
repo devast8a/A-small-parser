@@ -1,7 +1,6 @@
 export inspect
 local *
 import concat, insert, remove from table
-moonscript = require'moonscript.base'
 
 inspect = (value, offset='', seen={})->
     seen[0] = 0 if not seen[0]

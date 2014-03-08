@@ -12,18 +12,28 @@ help = ->
 
 compile = (compilerName, fileName)->
     -- Include the tools to compile
-    moonscript = require 'moonscript.base'
     Stream = require 'parser.Stream'
     AstTools = require 'AstTools'
 
-    -- Load the grammar
-    func = assert moonscript\loadfile compilerName
+    local grammar
+
+    -- Compile the grammar
+    if compilerName.match '%.moon$'
+        print 'Compiling grammar with moonscript'
+        moonscript = require 'moonscript.base'
+        grammar = assert moonscript\loadfile compilerName
+    elseif compilerName.match '%.lua$'
+        print 'Compiling grammar with lua'
+        grammar = assert loadfile compilerName
+    else
+        error "Unable to find a way to compile #{compilerName}"
+
     exported = {}
     exported._G = exported
 
-    setfenv func, setmetatable exported,
+    setfenv grammar, setmetatable exported,
         __index: _G
-    func!
+    grammar!
 
     -- Create a stream from the file
     file, msg = io\open fileName
@@ -79,6 +89,7 @@ compile = (compilerName, fileName)->
         return
     else
         sast = AstTools\Standardize(ast)[1]
+        --print inspect sast
         lua = AstTools\ToLua sast
 
         assert(loadstring(lua))!
