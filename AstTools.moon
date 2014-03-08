@@ -144,7 +144,7 @@ extractVariable = (ast)->
         when 'Assignment'
             ast.assignable
         else
-            error 'Could not extract variable from ' .. ast.tag
+            error "Could not extract variable from #{ast.tag}"
 
 standardForm =
     String: => {@}
