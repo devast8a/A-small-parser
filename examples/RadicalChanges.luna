@@ -1,0 +1,90 @@
+-- Execute the following block of code while the compiler is still running
+-{
+    -- Grab the parser generator tools
+    gg = require 'parser.grammar.generator'
+
+    -- Create a sequence matcher that looks for the following elements one after the other
+    -- Try followed by some statements followed by catch etc...
+    TryCatch = gg::Sequence {'try', StatementBlock, 'catch', Identifier, StatementBlock}
+
+    -- Insert out matcher into the statement matcher
+    --  We can now put our syntax anywhere the parser expects a statement
+    Statement.insert TryCatch, 1
+
+    -- One last step
+    -- The tree our matcher outputs can not be processed by the compiler
+    --   We can use a builder which runs after our syntax has been parsed and allows us
+    --   to rebuild our tree in a format the compiler understands.
+    TryCatch.builder = (ast)->
+        -- Sequences return as a list (It runs on lua so 1-indexing)
+        --   Give them better names so it's easier to understand
+        try_block = ast[2]
+        exceptionName = ast[4]
+        catch_block = ast[5]
+
+        -- The easiest way to rebuild a tree is to "escape" code
+        -- The following bit of code is parsed and returned as an AST instead of executing.
+        --   We can insert variables inside our AST by splicing them with -{ }
+        return +{
+            output = table::pack pcall ->
+                -- Replace -{try_block} with the contents of try block
+                -{try_block}
+
+            if not output[1]
+                -- The parser doesn't know what exceptionName is, it can try to guess that it's either
+                --   an expression or a statement. We need to help it out here and tell it exceptionName
+                --   is an Assignable.
+                -{Assignable: exceptionName} = output[2]
+
+                -- Here we didn't need to tell the parser what catch_block is, it guessed it was a Statement
+                -{catch_block}
+        }
+}
+
+-- Let's try out our funky new try exception block
+try
+    print 'Hello World!'
+    nonExistentFunction 'Hello World!'
+catch e
+    print 'The exception ' .. e
+
+-- It's pretty cool right?
+-- Oh? You don't like signficant whitespace language...
+-- W-w-well that's cool... I guess...
+-{
+    --[[
+        A lot of the grammar is constructed as just a list of matchers,
+            even if there's only one matcher in that list.
+
+        Other matchers then reference the list but not the elements in that list
+            This means that we can swap out stuff in that list without the other
+            matchers needing to be updated or even touched.
+
+        So let's try and work on that whitespace problem
+    ]]
+    -- Statement blocks should be using stronk braces not wimpy whitespace
+    block = Sequence {'{', Block, '}'}
+
+    block.builder = (ast)->
+        return ast[2]
+
+    -- INDENTs and DEDENTs should be ignored as statements
+    Statement.add Any {INDENT}, {tag: 'Ignore'}
+    Statement.add Any {DEDENT}, {tag: 'Ignore'}
+
+    -- API isn't complete for a lot of stuff
+    --  Just directly overwrite the first matcher in the StatementBlock
+    StatementBlock.parsers[1] = block
+}
+
+-- Let's try out our funky new well delineated try block
+try {
+            print 'Hello World!'
+nonExistentFunction 'Hello World!'
+} catch e {
+        print 'The exception ' .. e
+print 'Significant whitespace status: Gone'
+}
+
+-- The grammar isn't entirely setup for such radical modification
+--  but this gives you an idea of what can be done.
