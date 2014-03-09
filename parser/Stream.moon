@@ -16,6 +16,7 @@ class Stream extends require 'parser.Linemap'
     lastAfter: -1
     lastBefore: -1
     stateNumber: 0
+    inMetaquote: false
 
     new: (@__source, @parser)=>
         super @__source
@@ -46,6 +47,7 @@ class Stream extends require 'parser.Linemap'
             lastAfter: @lastAfter
             lastBefore: @lastBefore
             thisParser: @thisParser
+            inMetaquote: @inMetaquote
         }
 
     popContinue: =>
@@ -67,6 +69,7 @@ class Stream extends require 'parser.Linemap'
         @stateNumber = state.stateNumber
         @lastAfter = state.lastAfter
         @lastBefore = state.lastBefore
+        @inMetaquote = state.inMetaquote
 
         @popRest state
 

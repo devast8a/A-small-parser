@@ -1,7 +1,7 @@
 -- Export anything that begins with a capital letter
 AstTools = require 'AstTools'
 export ^
-import INDENT, DEDENT, Any, On, BaseParser, Repeat, LeftRecursive, Optional, Not, Pattern, Sequence, Keyword, Token, Peek, EOF, T from require 'parser.grammar.generator'
+import INDENT, DEDENT, Any, On, Run, BaseParser, Repeat, LeftRecursive, Optional, Not, Pattern, Sequence, Keyword, Token, Peek, EOF, T from require 'parser.grammar.generator'
 NEWLINE = Token 'NEWLINE'
 
 Expression = Any {}     -- Anything that may return a result
@@ -225,9 +225,16 @@ If.add Sequence {'if', Expression, INDENT, Block, DEDENT},
 --------------------------------------------------
 MetalevelShiftReturnAst = Any {}
 
-MetalevelShiftReturnAst.add Sequence {'+{', INDENT, Block, DEDENT, '}'},
+mlr_before = => stream.inMetaquote = true
+mlr_after = => stream.inMetaquote = false
+
+MetalevelShiftReturnAst.add Sequence {'+{', INDENT, Run(Block, before: mlr_before, after: mlr_after), DEDENT, '}'},
     builder: =>
         AstTools\EscapeAst @[3]
+
+MetalevelShiftReturnAst.add Sequence {'+{', Expression ,'}'},
+    builder: =>
+        AstTools\EscapeAst @[2]
 
 --------------------------------------------------
 -- Metalevel Shift Run Code ----------------------
@@ -235,12 +242,24 @@ MetalevelShiftReturnAst.add Sequence {'+{', INDENT, Block, DEDENT, '}'},
 MetalevelShiftRunCode = Any {}
 
 MetalevelShiftRunCode.add Sequence {'-{', INDENT, Block, DEDENT, '}'},
-    builder: =>
-        AstTools\DoAst @[3], _G
+    builder: (stream)=>
+        if stream.inMetaquote
+            return {
+                tag: 'Splice'
+                content: @[3]
+            }
+        else
+            AstTools\DoAst @[3], _G
 
-MetalevelShiftRunCode.add Sequence {'-{', Statement, '}'},
+MetalevelShiftRunCode.add Sequence {'-{', Expression, '}'},
     builder: =>
-        error 'Not implemented yet'
+        if stream.inMetaquote
+            return {
+                tag: 'Splice'
+                content: @[2]
+            }
+        else
+            AstTools\DoAst @[2], _G
 
 --------------------------------------------------
 -- Self Index ------------------------------------
@@ -341,7 +360,7 @@ __ A B     E   DotIndex
 __ A B   D E   SelfIndex
 __ A B C D E   Identifier
 __         E S MetalevelShiftRunCode
-__         E   MetalevelShiftReturnAst
+__         E S MetalevelShiftReturnAst
 
 --------------------------------------------------
 -- Parser Configuration --------------------------
