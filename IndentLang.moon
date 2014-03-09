@@ -249,7 +249,8 @@ MetalevelShiftRunCode.add Sequence {'-{', INDENT, Block, DEDENT, '}'},
                 content: @[3]
             }
         else
-            AstTools\DoAst @[3], _G
+            AstTools\DoAst @[3],
+                env: _G
 
 MetalevelShiftRunCode.add Sequence {'-{', Expression, '}'},
     builder: =>
@@ -259,7 +260,8 @@ MetalevelShiftRunCode.add Sequence {'-{', Expression, '}'},
                 content: @[2]
             }
         else
-            AstTools\DoAst @[2], _G
+            AstTools\DoAst @[2],
+                env: _G
 
 --------------------------------------------------
 -- Self Index ------------------------------------
