@@ -146,14 +146,6 @@ Call.add Sequence {Identifier, '::', Identifier, CallArgumentList},
             args: @[4]
         }
 
-Call.add Sequence {Callable, '(', Repeat(CallArgument, separator: CallArgumentSeparator), ')'},
-    builder: =>
-        name, args = unpack @
-        {
-            args: args
-            name: name
-        }
-
 Call.add Sequence {Callable, '!'},
     builder: =>
         name = unpack @
