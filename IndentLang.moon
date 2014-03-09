@@ -479,6 +479,6 @@ After.add LuaBlockComment
 After.add LuaComment
 
 -- Root
-Root = Sequence {Repeat(Statement), EOF},
+Root = Sequence {Optional(Repeat(Statement)), EOF},
     tag: 'Block'
     builder: => @[1]
