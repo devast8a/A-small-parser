@@ -302,7 +302,7 @@ FlipRecursiveTree = (tree, recursive, leaf, selector=isTable)->
 
 LoadAst = (ast, options={})->
     assert ast, "Ast must not be nil"
-    func, err = loadstring T(ast), options.name
+    func, err = loadstring T(S(ast)[1]), options.name
 
     if func
         if options.env
@@ -311,7 +311,10 @@ LoadAst = (ast, options={})->
     return func, err
 
 DoAst = (ast, options={})->
-    f = assert LoadAst ast, options
+    f, msg = LoadAst ast, options
+    if not f
+        print T(S(ast)[1])
+        error msg
     f!
 
 RightToLeftRecursiveTree = (tree, selector)->
