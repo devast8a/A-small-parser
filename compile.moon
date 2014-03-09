@@ -88,9 +88,13 @@ compile = (compilerName, fileName)->
         stream.handleError 'Unable to match input'
         return
     else
+        start = os\clock!
         sast = AstTools\Standardize(ast)[1]
-        --print inspect sast
+        print "Ast rewriting took: #{(os\clock! - start) * 1000}ms"
+
+        start = os\clock!
         lua = AstTools\ToLua sast
+        print "Ast target conversion: #{(os\clock! - start) * 1000}ms"
 
         assert(loadstring(lua))!
 
