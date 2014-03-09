@@ -110,10 +110,10 @@ CallArgument = Any {}
 CallArgumentList = Any {}
 CallArgumentSeparator = Any {}
 
-CallArgumentList.add Repeat(CallArgument, separator: CallArgumentSeparator)
 CallArgumentList.add Sequence{'(', Repeat(CallArgument, separator: CallArgumentSeparator), ')'},
     builder: =>
         return @[2]
+CallArgumentList.add Repeat(CallArgument, separator: CallArgumentSeparator)
 
 Call.add Sequence {Optional(DotIndexChain), Identifier, CallArgumentList},
     builder: =>
