@@ -364,6 +364,36 @@ __ A B C D E   Identifier
 __         E S MetalevelShiftRunCode
 __         E S MetalevelShiftReturnAst
 
+enableFor = (parserName)->
+    mls = Any {}
+
+    mls.add Sequence {"-{#{parserName}:", INDENT, Block, DEDENT, '}'},
+        builder: (stream)=>
+            if stream.inMetaquote
+                return {
+                    tag: 'Splice'
+                    content: @[3]
+                }
+            else
+                AstTools\DoAst @[3],
+                    env: _G
+
+    mls.add Sequence {"-{#{parserName}:", Expression, '}'},
+        builder: =>
+            if stream.inMetaquote
+                return {
+                    tag: 'Splice'
+                    content: @[2]
+                }
+            else
+                AstTools\DoAst @[2],
+                    env: _G
+
+    _G[parserName].add mls
+
+enableFor 'Assignable'
+
+
 --------------------------------------------------
 -- Parser Configuration --------------------------
 --------------------------------------------------
