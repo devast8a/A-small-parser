@@ -335,15 +335,54 @@ LeftChainToTree = (tag, chain, extract)->
         left: newTree
     }
 
+local escapeastfuncs
+
+EscapeAst = =>
+    switch type @
+        when 'string'
+            return { "\"#{escape @}\"", tag: 'String' }
+
+        when 'number'
+            return { @, tag: 'Number' }
+
+        when 'table'
+            if type(@) == 'table'
+                f = escapeastfuncs[@tag] or escapeastfuncs.default
+                f @
+            else
+                escapeastfuncs\default @
+
+        else
+            error 'Unable to parse type ' .. type @
+
+
+escapeastfuncs =
+    default: =>
+        content = [EscapeAst v for v in *@]
+
+        for k,v in pairs @
+            if type(k) != 'number'
+                insert content,
+                    key: {
+                        k
+                        tag: 'Identifier'
+                    }
+                    value: EscapeAst v
+                    tag: 'TableKeyValue'
+
+        return {
+            content: content
+            tag: 'Table'
+        }
+
+    Splice: => @content
+
 return {
     Standardize: S
     ToLua: T
     :LeftChainToTree
-    EscapeAst: (ast)->
-        {
-            tag: 'Escape'
-            content: ast
-        }
+    :EscapeAst
+
     :DoAst
     :LoadAst
 }
