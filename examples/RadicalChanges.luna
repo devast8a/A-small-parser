@@ -5,7 +5,7 @@
 
     -- Create a sequence matcher that looks for the following elements one after the other
     -- Try followed by some statements followed by catch etc...
-    TryCatch = gg::Sequence {'try', StatementBlock, 'catch', Identifier, StatementBlock}
+    TryCatch = gg::Sequence {'try', Block, 'catch', Identifier, Block}
 
     -- Insert out matcher into the statement matcher
     --  We can now put our syntax anywhere the parser expects a statement
@@ -63,7 +63,7 @@ catch e
         So let's try and work on that whitespace problem
     ]]
     -- Statement blocks should be using stronk braces not wimpy whitespace
-    block = Sequence {'{', Block, '}'}
+    block = Sequence {'{', Repeat(Statement), '}'}
 
     block.builder = (ast)->
         return ast[2]
@@ -74,7 +74,7 @@ catch e
 
     -- API isn't complete for a lot of stuff
     --  Just directly overwrite the first matcher in the StatementBlock
-    StatementBlock.parsers[1] = block
+    Block.parsers[1] = block
 }
 
 -- Let's try out our funky new well delineated try block

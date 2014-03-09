@@ -9,8 +9,12 @@ Statement = Any {}      -- Anything that is allowed to be on its own
 Assignable = Any {}     -- Anything that can be assigned to
 DotIndexable = Any {}   -- Anything that can be on the left hand side of a dot index expression
 
-Block = Repeat Statement,
+Block = Any {},
     tag: 'Block'
+
+Block.add Sequence {INDENT, Repeat(Statement), DEDENT},
+    builder: =>
+        @[2]
 
 Newline = Keyword '\n'
 SpaceTab = Pattern '[ \t]+'
@@ -187,10 +191,10 @@ FunctionParameter = Any {}
 FunctionParameterList = Sequence {'(', Repeat(FunctionParameter, separator:','), ')'},
     builder: => @[2]
 
-Function.add Sequence{Optional(FunctionParameterList), '/([-=])>/', INDENT, Block, DEDENT},
+Function.add Sequence{Optional(FunctionParameterList), '/([-=])>/', Block},
     tag: 'Function'
     builder: =>
-        args, arrow, _, body = unpack @
+        args, arrow, body = unpack @
 
         if arrow[2] == '='
             table\insert args, 1, {
@@ -211,9 +215,9 @@ FunctionParameter.add Identifier
 If = Any {},
     tag: 'If'
 
-If.add Sequence {'if', Expression, INDENT, Block, DEDENT},
+If.add Sequence {'if', Expression, Block},
     builder: =>
-        _, condition, _, body = unpack @
+        _, condition, body = unpack @
 
         {
             condition: condition
@@ -228,9 +232,9 @@ MetalevelShiftReturnAst = Any {}
 mlr_before = => stream.inMetaquote = true
 mlr_after = => stream.inMetaquote = false
 
-MetalevelShiftReturnAst.add Sequence {'+{', INDENT, Run(Block, before: mlr_before, after: mlr_after), DEDENT, '}'},
+MetalevelShiftReturnAst.add Sequence {'+{', Run(Block, before: mlr_before, after: mlr_after), '}'},
     builder: =>
-        AstTools\EscapeAst @[3]
+        AstTools\EscapeAst @[2]
 
 MetalevelShiftReturnAst.add Sequence {'+{', Expression ,'}'},
     builder: =>
@@ -241,15 +245,15 @@ MetalevelShiftReturnAst.add Sequence {'+{', Expression ,'}'},
 --------------------------------------------------
 MetalevelShiftRunCode = Any {}
 
-MetalevelShiftRunCode.add Sequence {'-{', INDENT, Block, DEDENT, '}'},
+MetalevelShiftRunCode.add Sequence {'-{', Block, '}'},
     builder: (stream)=>
         if stream.inMetaquote
             return {
                 tag: 'Splice'
-                content: @[3]
+                content: @[2]
             }
         else
-            AstTools\DoAst @[3],
+            AstTools\DoAst @[2],
                 env: _G
 
 MetalevelShiftRunCode.add Sequence {'-{', Expression, '}'},
@@ -318,9 +322,9 @@ TableValue.add Expression
 While = Any {},
     tag: 'While'
 
-While.add Sequence {'while', Expression, INDENT, Block, DEDENT},
+While.add Sequence {'while', Expression, Block},
     builder: =>
-        _, condition, _, body = unpack @
+        _, condition, body = unpack @
 
         {
             condition: condition
@@ -367,15 +371,15 @@ __         E S MetalevelShiftReturnAst
 enableFor = (parserName)->
     mls = Any {}
 
-    mls.add Sequence {"-{#{parserName}:", INDENT, Block, DEDENT, '}'},
+    mls.add Sequence {"-{#{parserName}:", Block, '}'},
         builder: (stream)=>
             if stream.inMetaquote
                 return {
                     tag: 'Splice'
-                    content: @[3]
+                    content: @[2]
                 }
             else
-                AstTools\DoAst @[3],
+                AstTools\DoAst @[2],
                     env: _G
 
     mls.add Sequence {"-{#{parserName}:", Expression, '}'},
@@ -410,12 +414,7 @@ After.add EmptyLine
 After.add LuaBlockComment
 After.add LuaComment
 
-StatementBlock = Any {}
-
-StatementBlock.add Sequence {INDENT, Block, DEDENT},
-    builder: =>
-        @[2]
-
 -- Root
-Root = Sequence {Block, EOF},
+Root = Sequence {Repeat(Statement), EOF},
+    tag: 'Block'
     builder: => @[1]
