@@ -410,6 +410,12 @@ After.add EmptyLine
 After.add LuaBlockComment
 After.add LuaComment
 
+StatementBlock = Any {}
+
+StatementBlock.add Sequence {INDENT, Block, DEDENT},
+    builder: =>
+        @[2]
+
 -- Root
 Root = Sequence {Block, EOF},
     builder: => @[1]
