@@ -332,6 +332,23 @@ class Token extends BaseParser
     __tostring: =>
         "#{@@__name} #{@name}"
 
+-- Metalevel parser
+class Run extends BaseParser
+    new: (matcher, options)=>
+        super options
+        @matcher = toParser matcher
+        @before = options.before or =>
+        @after = options.after or =>
+
+    exec: (stream)=>
+        @\before!
+        res, ast = stream.match @matcher
+
+        if res
+            @\after!
+
+        return res, ast
+
 return {
     :Any
     :BaseParser
@@ -342,6 +359,7 @@ return {
     :Pattern
     :Peek
     :Repeat
+    :Run
     :Sequence
     :Token
     :Keyword
