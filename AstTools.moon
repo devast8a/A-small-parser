@@ -30,6 +30,9 @@ replace =
     '\"': '\\\"'
     '\'': '\\\''
 
+table.pack = (...)->
+    {n:select('#',...),...}
+
 escape = (str)->
     for find,repl in pairs replace
         str = str.gsub find, repl
