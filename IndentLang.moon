@@ -183,6 +183,32 @@ DotIndexWith.add Identifier
 DotIndexWith.add Number
 
 --------------------------------------------------
+-- For -------------------------------------------
+--------------------------------------------------
+For = Any {}
+
+For.add Sequence {'for', Identifier, '=', Expression, ',', Expression, ',', Expression, Block},
+    tag: 'For'
+    builder: =>
+        {
+            iterator: @[2]
+            start: @[4]
+            end: @[6]
+            step: @[8]
+            body: @[9]
+        }
+
+For.add Sequence {'for', Identifier, '=', Expression, ',', Expression, Block},
+    tag: 'For'
+    builder: =>
+        {
+            iterator: @[2]
+            start: @[4]
+            end: @[6]
+            body: @[7]
+        }
+
+--------------------------------------------------
 -- Function Definition ---------------------------
 --------------------------------------------------
 Function = Any {}
@@ -215,13 +241,49 @@ FunctionParameter.add Identifier
 If = Any {},
     tag: 'If'
 
-If.add Sequence {'if', Expression, Block},
+Else = Any {}
+
+If.add Sequence {'if', Expression, Block, Optional(Else)},
     builder: =>
-        _, condition, body = unpack @
+        _, condition, body, tail = unpack @
 
         {
             condition: condition
             body: body
+            tail: tail
+        }
+
+Else.add Sequence {'else if', Expression, Block, Optional(Else)}
+    tag: 'ElseIf'
+    builder: =>
+        _, condition, body, tail = unpack @
+
+        {
+            condition: condition
+            body: body
+            tail: tail
+        }
+
+Else.add Sequence {'else', Block}
+    tag: 'Else'
+    builder: =>
+        _, body = unpack @
+
+        {
+            body: body
+        }
+
+--------------------------------------------------
+-- Length Operator -------------------------------
+--------------------------------------------------
+Length = Any {},
+    tag: 'Length'
+
+Length.add Sequence{'#', Expression},
+    builder: =>
+
+        {
+            expression: @[2]
         }
 
 --------------------------------------------------
@@ -354,6 +416,7 @@ export ^
 __         E S Assignment
 __           S While
 __           S If
+__           S For
 __         E S Call
 __         E   BinaryExpression
 __         E   Function
@@ -365,6 +428,7 @@ __ A       E   BracketIndex
 __ A B     E   DotIndex
 __ A B   D E   SelfIndex
 __ A B C D E   Identifier
+__         E   Length
 __         E S MetalevelShiftRunCode
 __         E S MetalevelShiftReturnAst
 
