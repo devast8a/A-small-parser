@@ -14,10 +14,14 @@ class Linemap
             a.start < b.start
 
         -- Set extra data about the line
-        for i=1,#@lines-1
+        totalLines = #@lines
+
+        for i=1,totalLines-1
             @lines[i].line = i
             @lines[i].end = @lines[i+1].start - #@lines[i+1].newline
-        @lines[#@lines].end = #@string
+
+        @lines[totalLines].line = totalLines
+        @lines[totalLines].end = #@string
 
     getLine: (line)=>
         line = @lines[line]
