@@ -40,8 +40,7 @@ class Linemap
 
     getInfoFromOffset: (pos)=>
         -- Work out which line this is on
-        for i=1,#@lines
-            if pos < @lines[i].start
-                line = @lines[i - 1]
+        for line in *@lines
+            if pos > line.start
                 return line
         return nil
